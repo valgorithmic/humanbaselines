@@ -87,6 +87,19 @@ def test_crash_year_and_denominator_vmt_kwargs():
 
 
 @responses.activate
+def test_operator_weighting_and_operator_weight_kwargs():
+    # The renamed weighting toggle (operator_weighting=robotaxi) and the optional
+    # numeric override (operator_weight) must validate client-side and serialize
+    # onto the request body.
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    client().compute(operator_weighting="robotaxi", operator_weight=2.5)
+    import json
+    sent = json.loads(responses.calls[0].request.body)["selections"]
+    assert sent["operator_weighting"] == "robotaxi"
+    assert sent["operator_weight"] == 2.5
+
+
+@responses.activate
 def test_401_raises_authentication_error():
     responses.post(f"{V1}/compute", json={"detail": "bad key"}, status=401)
     with pytest.raises(AuthenticationError) as e:

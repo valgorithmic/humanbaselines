@@ -67,6 +67,10 @@ class FilterOption(BaseModel):
     label: str = Field(..., title='Label')
 
 
+class OperatorWeight(RootModel[float]):
+    root: float = Field(..., gt=0.0, title='Operator Weight')
+
+
 class InTransport(Enum):
     in_transport = 'in_transport'
     include_all = 'include_all'
@@ -82,6 +86,11 @@ class LightFilter(Enum):
 class MultiplierVmt(Enum):
     calibrated = 'calibrated'
     hpms = 'hpms'
+
+
+class OperatorWeighting(Enum):
+    county_wide = 'county_wide'
+    robotaxi = 'robotaxi'
 
 
 class Outcome(Enum):
@@ -129,11 +138,6 @@ class RoadGroup(Enum):
     other_freeway = 'other_freeway'
     arterial = 'arterial'
     collector_local = 'collector_local'
-
-
-class RoboTaxiWeighting(Enum):
-    county_wide = 'county_wide'
-    operator_weighted = 'operator_weighted'
 
 
 class RouteComputeResult(BaseModel):
@@ -261,8 +265,9 @@ class GeofenceSelections(BaseModel):
     road_type: list[RoadGroup] | RoadGroup = Field(
         ['arterial', 'collector_local'], title='Road Type'
     )
-    robo_taxi_weighting: RoboTaxiWeighting = 'county_wide'
+    operator_weighting: OperatorWeighting = 'county_wide'
     multiplier_vmt: MultiplierVmt = 'calibrated'
+    operator_weight: OperatorWeight | None = Field(None, title='Operator Weight')
     denominator_vmt: DenominatorVmt = 'calibrated'
     under_reporting: UnderReporting = 'none'
     weather: list[WeatherFilter] | WeatherFilter = Field(

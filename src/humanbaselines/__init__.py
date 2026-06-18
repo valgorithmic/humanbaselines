@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 from .client import HumanBaselines
 from .exceptions import (
@@ -38,7 +38,7 @@ from .models import (
     RegionInfo,
     RegionsResponse,
     RoadGroup,
-    RoboTaxiWeighting,
+    OperatorWeighting,
     RouteComputeResult,
     RouteSelections,
     Tier3Mode,
@@ -79,7 +79,7 @@ __all__ = [
     "RoadGroup",
     "Tier3Mode",
     "InTransport",
-    "RoboTaxiWeighting",
+    "OperatorWeighting",
     "MultiplierVmt",
     "UnderReporting",
     "WeatherFilter",
