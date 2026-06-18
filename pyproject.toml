@@ -5,11 +5,11 @@ build-backend = "hatchling.build"
 [project]
 name = "humanbaselines"
 dynamic = ["version"]
-description = "Python client for the Human Crash Baselines API — human-driver crash-rate baselines by region, route, and filter."
+description = "Python client for the Human Crash Baselines API."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
-authors = [{ name = "Valgorithmic, Inc." }]
+authors = [{ name = "Valgorithmic, Inc. (Valgo)" }]
 keywords = ["crash", "baseline", "safety", "autonomous-vehicles", "api-client"]
 classifiers = [
     "Development Status :: 4 - Beta",
