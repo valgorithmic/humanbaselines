@@ -1,5 +1,9 @@
 # humanbaselines
 
+[![CI](https://github.com/valgorithmic/humanbaselines/actions/workflows/test.yml/badge.svg)](https://github.com/valgorithmic/humanbaselines/actions/workflows/test.yml)
+[![PyPI](https://img.shields.io/pypi/v/humanbaselines.svg)](https://pypi.org/project/humanbaselines/)
+[![docs](https://img.shields.io/badge/docs-humanbaselines.com-blue)](https://docs.humanbaselines.com)
+
 Python client for the Human Crash Baselines API: typed access to human-driver crash-rate baselines by region, route, and filter.
 
 It wraps the `/v1` REST API: construct a client with your key, call typed methods, get typed results back (no hand-built JSON, no remembering the auth header).
@@ -181,4 +185,4 @@ This fetches `<host>/openapi.json` (default `https://humanbaselines.com`) and ru
 
 ## License
 
-Apache-2.0 © Valgorithmic, Inc.
+Apache-2.0 © Valgorithmic, Inc. (d.b.a. Valgo)

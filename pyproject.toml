@@ -38,7 +38,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://humanbaselines.com"
-Documentation = "https://human-baseline-api-yz2u5f75wa-uc.a.run.app/docs"
+Documentation = "https://docs.humanbaselines.com"
 Repository = "https://github.com/valgorithmic/humanbaselines"
 Issues = "https://github.com/valgorithmic/humanbaselines/issues"
 
