@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "humanbaselines"
+dynamic = ["version"]
+description = "Python client for the Human Crash Baselines API — human-driver crash-rate baselines by region, route, and filter."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "Valgorithmic, Inc." }]
+keywords = ["crash", "baseline", "safety", "autonomous-vehicles", "api-client"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "requests>=2.31",
+    "pydantic>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "responses>=0.25",
+    # model codegen (scripts/regenerate_models.py)
+    "datamodel-code-generator>=0.25",
+    "black",
+    "isort",
+]
+
+[project.urls]
+Homepage = "https://humanbaselines.com"
+Documentation = "https://human-baseline-api-yz2u5f75wa-uc.a.run.app/docs"
+Repository = "https://github.com/valgorithmic/humanbaselines"
+Issues = "https://github.com/valgorithmic/humanbaselines/issues"
+
+[tool.hatch.version]
+path = "src/humanbaselines/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/humanbaselines"]

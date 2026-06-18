@@ -1,0 +1,87 @@
+name: release
+
+# Publishes a version to PyPI via Trusted Publishing (OIDC — no stored tokens).
+# Triggered two ways:
+#   - workflow_dispatch: manual, with an explicit `version` input.
+#   - repository_dispatch (event_type: ui-version): fired by the upstream app's
+#     sync workflow when the canonical product version changes; the version is
+#     carried in client_payload.version.
+# The version is the canonical product version (the app's root package.json), so
+# the client always ships in lockstep with the UI it documents.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.1.0)"
+        required: true
+        type: string
+  repository_dispatch:
+    types: [ui-version]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # OIDC for PyPI Trusted Publishing
+      contents: write   # commit the version bump + push the tag/release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            VERSION="${{ github.event.client_payload.version }}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          VERSION="${VERSION#v}"
+          if [ -z "$VERSION" ]; then echo "no version supplied" >&2; exit 1; fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing version $VERSION"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Bump __version__ and commit
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          sed -i 's/^__version__ = .*/__version__ = "'"$VERSION"'"/' src/humanbaselines/__init__.py
+          grep '^__version__' src/humanbaselines/__init__.py
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "version already $VERSION; no bump commit"
+          else
+            git commit -am "Release v$VERSION"
+            git push
+          fi
+
+      - name: Tag and GitHub Release
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "tag v$VERSION already exists; skipping release creation"
+          else
+            gh release create "v$VERSION" --title "v$VERSION" --generate-notes --target "$(git rev-parse HEAD)"
+          fi
+
+      - name: Build
+        run: |
+          pip install build
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
