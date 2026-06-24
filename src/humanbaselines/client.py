@@ -20,6 +20,7 @@ from .exceptions import (
 )
 from .models import (
     DEFAULT_COUNTY,
+    BatchComputeResult,
     ComputeResult,
     DepotComputeResult,
     DepotPin,
@@ -248,13 +249,34 @@ class HumanBaselines:
     # -- compute ------------------------------------------------------------
 
     def compute(self, selections: GeofenceSelections | dict | None = None, *,
-                county: str | None = None, **filters) -> ComputeResult:
+                county: str | None = None, summary_only: bool = False,
+                **filters) -> ComputeResult:
         """Geofence (S2-cell) crash rate. Inherits the bound config; per-call
-        args override it."""
+        args override it. ``summary_only=True`` drops the per-cell ``cells``
+        breakdown (the bulk of the response), keeping just the county-wide
+        scalars."""
         sel = self._resolve_selections(GeofenceSelections, selections, filters)
-        data = self._request("POST", "/compute",
-                             json={"county": self._county(county), "selections": sel})
+        data = self._request("POST", "/compute", json={
+            "county": self._county(county), "selections": sel,
+            "summary_only": summary_only,
+        })
         return ComputeResult.model_validate(data)
+
+    def compute_batch(self, counties: list[str],
+                      selections: GeofenceSelections | dict | None = None, *,
+                      summary_only: bool = True, **filters) -> BatchComputeResult:
+        """Geofence crash rate across several counties in ONE request — for
+        comparing counties side by side. Applies the same (bound + per-call)
+        selections to every county. Returns a per-county list of
+        ``{county, result, error}`` (same order as ``counties``); a county whose
+        compute fails (e.g. a filter value it doesn't support) comes back with
+        ``error`` set rather than failing the whole call. Defaults to
+        summary-only (no per-cell breakdown)."""
+        sel = self._resolve_selections(GeofenceSelections, selections, filters)
+        items = [{"county": c, "selections": sel} for c in counties]
+        data = self._request("POST", "/compute/batch",
+                             json={"items": items, "summary_only": summary_only})
+        return BatchComputeResult.model_validate(data)
 
     def compute_route(self, segment_ids: list[tuple[str, int]],
                       selections: RouteSelections | dict | None = None, *,

@@ -14,6 +14,8 @@ would collide with the client's `ValidationError` *exception*).
 from __future__ import annotations
 
 from ._generated import (  # noqa: F401
+    BatchComputeResult,
+    BatchItemResult,
     CiMethod,
     ComputeResult,
     DepotComputeResult,
@@ -54,6 +56,8 @@ __all__ = [
     "DepotPin",
     # response models
     "ComputeResult",
+    "BatchComputeResult",
+    "BatchItemResult",
     "PerCellResult",
     "RouteComputeResult",
     "PerSegmentResult",
