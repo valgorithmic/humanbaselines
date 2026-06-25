@@ -282,9 +282,8 @@ class HumanBaselines:
                       selections: RouteSelections | dict | None = None, *,
                       county: str | None = None, **filters) -> RouteComputeResult:
         """Crash rate over a sequence of interstate (route, milepost) segments.
-        For route-capable regions (``travis``, ``ca_interstates``,
-        ``sw_interstates`` — see ``regions()``). Inherits the bound config;
-        per-call args override it."""
+        For route-capable regions (``interstates`` — see ``regions()``).
+        Inherits the bound config; per-call args override it."""
         sel = self._resolve_selections(RouteSelections, selections, filters)
         data = self._request("POST", "/compute/route", json={
             "county": self._county(county),
@@ -297,9 +296,9 @@ class HumanBaselines:
                             selections: DepotSelections | dict | None = None, *,
                             county: str | None = None, **filters) -> DepotComputeResult:
         """Full depot-to-depot trip rate (access + interstate + access legs).
-        For depot-capable regions (``travis``, ``ca_interstates``,
-        ``sw_interstates`` — see ``regions()``). Pins are (lat, lon) tuples,
-        DepotPins, or dicts. Inherits the bound config; per-call args override it."""
+        For depot-capable regions (``interstates`` — see ``regions()``). Pins
+        are (lat, lon) tuples, DepotPins, or dicts. Inherits the bound config;
+        per-call args override it."""
         sel = self._resolve_selections(DepotSelections, selections, filters)
         data = self._request("POST", "/compute/depot-route", json={
             "county": self._county(county),

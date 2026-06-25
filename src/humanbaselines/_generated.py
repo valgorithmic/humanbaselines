@@ -168,6 +168,11 @@ class Tier3Mode(Enum):
     all = 'all'
 
 
+class Tiling(Enum):
+    s2 = 's2'
+    h3 = 'h3'
+
+
 class UnderReporting(Enum):
     none = 'none'
     adjusted = 'adjusted'
@@ -278,6 +283,7 @@ class GeofenceSelections(BaseModel):
     multiplier_vmt: MultiplierVmt = 'calibrated'
     operator_weight: OperatorWeight | None = Field(None, title='Operator Weight')
     denominator_vmt: DenominatorVmt = 'calibrated'
+    tiling: Tiling = 's2'
     under_reporting: UnderReporting = 'none'
     weather: list[WeatherFilter] | WeatherFilter = Field(
         ['dry', 'rain', 'fog'], title='Weather'

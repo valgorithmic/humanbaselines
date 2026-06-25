@@ -68,6 +68,21 @@ def test_compute_sends_key_and_parses():
 
 
 @responses.activate
+def test_compute_tiling_h3_serializes():
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    client().compute(tiling="h3")
+    import json
+    sent = json.loads(responses.calls[0].request.body)
+    assert sent["selections"]["tiling"] == "h3"
+
+
+def test_compute_rejects_bad_tiling():
+    # Unknown enum value is caught client-side by the typed selections model.
+    with pytest.raises(Exception):
+        GeofenceSelections(tiling="quadtree")
+
+
+@responses.activate
 def test_compute_summary_only_sends_flag():
     responses.post(f"{V1}/compute", json={**_COMPUTE_BODY, "cells": []}, status=200)
     result = client().compute(summary_only=True)
