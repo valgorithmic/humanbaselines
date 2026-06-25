@@ -14,20 +14,27 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 
 
-class AccessLogRequest(BaseModel):
-    email: str = Field(..., title='Email')
-    allowed: bool = Field(..., title='Allowed')
-
-
 class CiMethod(Enum):
     fay_feuer = 'fay_feuer'
     empirical_bayes = 'empirical_bayes'
+
+
+class ComputeBatchItem(BaseModel):
+    county: str = Field('travis', title='County')
+    selections: dict[str, Any] | None = Field(None, title='Selections')
+    cell_filter: list[str] | None = Field(None, title='Cell Filter')
+
+
+class ComputeBatchRequest(BaseModel):
+    items: list[ComputeBatchItem] | None = Field(None, title='Items')
+    summary_only: bool = Field(True, title='Summary Only')
 
 
 class ComputeRequest(BaseModel):
     county: str = Field('travis', title='County')
     selections: dict[str, Any] | None = Field(None, title='Selections')
     cell_filter: list[str] | None = Field(None, title='Cell Filter')
+    summary_only: bool = Field(False, title='Summary Only')
 
 
 class SegmentId(RootModel[tuple[str, int]]):
@@ -151,12 +158,19 @@ class RouteComputeResult(BaseModel):
     rate_high: float | None = Field(None, title='Rate High')
     variance: float | None = Field(None, title='Variance')
     segments: list[PerSegmentResult] | None = Field(None, title='Segments')
+    exposure_sources: list[str] | None = Field(None, title='Exposure Sources')
+    crash_sources: list[str] | None = Field(None, title='Crash Sources')
 
 
 class Tier3Mode(Enum):
     marginal = 'marginal'
     none = 'none'
     all = 'all'
+
+
+class Tiling(Enum):
+    s2 = 's2'
+    h3 = 'h3'
 
 
 class UnderReporting(Enum):
@@ -269,6 +283,7 @@ class GeofenceSelections(BaseModel):
     multiplier_vmt: MultiplierVmt = 'calibrated'
     operator_weight: OperatorWeight | None = Field(None, title='Operator Weight')
     denominator_vmt: DenominatorVmt = 'calibrated'
+    tiling: Tiling = 's2'
     under_reporting: UnderReporting = 'none'
     weather: list[WeatherFilter] | WeatherFilter = Field(
         ['dry', 'rain', 'fog'], title='Weather'
@@ -305,9 +320,32 @@ class RouteSelections(BaseModel):
     ci_method: CiMethod = 'fay_feuer'
 
 
+class V1BatchItem(BaseModel):
+    county: str = Field('travis', title='County')
+    selections: GeofenceSelections | None = None
+
+
+class V1BatchRequest(BaseModel):
+    items: list[V1BatchItem] | None = Field(
+        None,
+        description="One (county, selections) combination per entry. Selections are per-item because a value valid in one county can be invalid in another, so the batch can't share a single selection set.",
+        title='Items',
+    )
+    summary_only: bool = Field(
+        True,
+        description='Batch defaults to summary-only (no per-cell breakdown), as it exists for multi-county comparison. Set false to include `cells`.',
+        title='Summary Only',
+    )
+
+
 class V1ComputeRequest(BaseModel):
     county: str = Field('travis', title='County')
     selections: GeofenceSelections | None = None
+    summary_only: bool = Field(
+        False,
+        description="Drop the per-cell `cells` breakdown (returned as []), keeping just the county-wide scalars. Cuts the bulk of the response for callers that don't need the map heatmap.",
+        title='Summary Only',
+    )
 
 
 class V1DepotRequest(BaseModel):
@@ -325,3 +363,16 @@ class V1RouteRequest(BaseModel):
         title='Segment Ids',
     )
     selections: RouteSelections | None = None
+
+
+class BatchItemResult(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    county: str = Field(..., title='County')
+    result: ComputeResult | None = None
+    error: str | None = Field(None, title='Error')
+
+
+class BatchComputeResult(BaseModel):
+    results: list[BatchItemResult] | None = Field(None, title='Results')

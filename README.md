@@ -103,7 +103,7 @@ hb2 = HumanBaselines(api_key="hbk_...", config="odd_fatal_cars.json")
 
 ### Route & depot modes
 
-Available for route/depot-capable regions - `travis` and `ca_az_interstates`
+Available for route/depot-capable regions - `interstates`
 (check `hb.regions()`). Route/depot count Class-8 combination
 trucks, so `ego_vehicle` defaults to `["combination"]` in these modes.
 

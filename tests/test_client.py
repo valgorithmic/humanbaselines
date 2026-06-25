@@ -68,6 +68,54 @@ def test_compute_sends_key_and_parses():
 
 
 @responses.activate
+def test_compute_tiling_h3_serializes():
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    client().compute(tiling="h3")
+    import json
+    sent = json.loads(responses.calls[0].request.body)
+    assert sent["selections"]["tiling"] == "h3"
+
+
+def test_compute_rejects_bad_tiling():
+    # Unknown enum value is caught client-side by the typed selections model.
+    with pytest.raises(Exception):
+        GeofenceSelections(tiling="quadtree")
+
+
+@responses.activate
+def test_compute_summary_only_sends_flag():
+    responses.post(f"{V1}/compute", json={**_COMPUTE_BODY, "cells": []}, status=200)
+    result = client().compute(summary_only=True)
+    assert result.cells == []
+    import json
+    assert json.loads(responses.calls[0].request.body)["summary_only"] is True
+
+
+@responses.activate
+def test_compute_batch_parses_per_county_results():
+    from humanbaselines import BatchComputeResult
+    body = {
+        "results": [
+            {"county": "travis", "result": {**_COMPUTE_BODY, "cells": []}, "error": None},
+            {"county": "houston", "result": None, "error": "no HPMS columns"},
+        ]
+    }
+    responses.post(f"{V1}/compute/batch", json=body, status=200)
+    out = client().compute_batch(["travis", "houston"], outcome="police_reported")
+    assert isinstance(out, BatchComputeResult)
+    assert len(out.results) == 2
+    assert out.results[0].county == "travis"
+    assert out.results[0].result.rate == pytest.approx(4.055)
+    assert out.results[1].result is None and out.results[1].error == "no HPMS columns"
+    import json
+    sent = json.loads(responses.calls[0].request.body)
+    assert sent["summary_only"] is True
+    assert [it["county"] for it in sent["items"]] == ["travis", "houston"]
+    # same (resolved) selections applied to every county
+    assert sent["items"][0]["selections"] == sent["items"][1]["selections"]
+
+
+@responses.activate
 def test_typed_selections_accepted():
     responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
     sel = GeofenceSelections(outcome="fatal", road_type=["interstate"])

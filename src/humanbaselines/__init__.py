@@ -19,6 +19,8 @@ from .exceptions import (
     ValidationError,
 )
 from .models import (
+    BatchComputeResult,
+    BatchItemResult,
     CiMethod,
     ComputeResult,
     DepotComputeResult,
@@ -64,6 +66,8 @@ __all__ = [
     "DepotPin",
     # response models
     "ComputeResult",
+    "BatchComputeResult",
+    "BatchItemResult",
     "PerCellResult",
     "RouteComputeResult",
     "PerSegmentResult",
