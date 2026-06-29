@@ -272,12 +272,14 @@ class GeofenceSelections(BaseModel):
     outcome: Outcome = 'police_reported'
     severity: int = Field(1, ge=1, le=7, title='Severity')
     ego_vehicle: list[VehicleClass] | VehicleClass = Field(
-        ['cars', 'light_trucks'], title='Ego Vehicle'
+        ['cars', 'light_trucks', 'heavy_trucks', 'motorcycles', 'buses'],
+        title='Ego Vehicle',
     )
     unresolved_nfs: Tier3Mode = 'marginal'
     in_transport: InTransport = 'in_transport'
     road_type: list[RoadGroup] | RoadGroup = Field(
-        ['arterial', 'collector_local'], title='Road Type'
+        ['collector_local', 'arterial', 'other_freeway', 'interstate'],
+        title='Road Type',
     )
     operator_weighting: OperatorWeighting = 'county_wide'
     multiplier_vmt: MultiplierVmt = 'calibrated'
