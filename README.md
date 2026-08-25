@@ -30,7 +30,7 @@ from humanbaselines import HumanBaselines
 hb = HumanBaselines(api_key="hbk_...")          # or set HUMANBASELINES_API_KEY
 
 # Geofence crash rate (kwargs are validated client-side):
-r = hb.compute(county="travis", outcome="police_reported", ego_vehicle=["cars", "light_trucks"])
+r = hb.compute(region="travis", outcome="police_reported", ego_vehicle=["cars", "light_trucks"])
 print(r.rate, r.rate_low, r.rate_high)          # 4.055 4.0 4.1
 print(r.N, r.D_miles, len(r.cells))             # 24617.0 6.07e9 1795
 
@@ -41,6 +41,17 @@ for f in hb.filters().modes["geofence"]:
 # Which regions / modes are available:
 hb.regions()
 ```
+
+A *region* is one served area: a county (`travis`), a group of them
+(`sf` is San Francisco, San Mateo and Santa Clara), a municipality
+(`boston`, `cambridge`, `worcester`), or a multi-state corridor
+(`interstates`). `hb.regions()` is the live list — it grows.
+
+`region` used to be called `county`, which was wrong for most of those.
+The old name still works everywhere it did before: `county=` on every
+compute call, `counties=` on `compute_batch`, and `"county"` in a saved
+config. Both go on the wire, so a pinned older client and a current one
+behave the same.
 
 ### Filters
 
@@ -67,7 +78,7 @@ once and every call inherits it; per-call args override individual fields:
 
 ```python
 hb = HumanBaselines(api_key="hbk_...", config={
-    "county": "travis",
+    "region": "travis",
     "outcome": "fatal",
     "ego_vehicle": ["cars", "light_trucks"],
 })
@@ -155,6 +166,9 @@ and `.body`.
   client can't drift from the API. `GET /v1/filters` is the authoritative
   runtime source for valid values and defaults.
 - Interactive API docs: the `/docs` page on the API host.
+- Batch results are keyed by region. Until the models are regenerated against a
+  deployed API that emits it, read `.county` on a `BatchItemResult`; the server
+  sends both.
 
 ## Development
 

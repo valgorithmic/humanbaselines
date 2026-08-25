@@ -10,7 +10,7 @@ from humanbaselines import HumanBaselines
 hb = HumanBaselines()  # api_key read from HUMANBASELINES_API_KEY
 
 config = {
-    "county": "travis",
+    "region": "travis",
     "outcome": "police_reported",
     "ego_vehicle": ["cars", "light_trucks"],
 }

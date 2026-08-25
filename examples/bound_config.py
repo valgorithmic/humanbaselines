@@ -9,7 +9,7 @@ from humanbaselines import HumanBaselines
 
 # The "ODD" — what counts as a crash and what we baseline against.
 config = {
-    "county": "travis",
+    "region": "travis",
     "outcome": "police_reported",
     "ego_vehicle": ["cars"],
 }
