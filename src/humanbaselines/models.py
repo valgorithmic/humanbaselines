@@ -45,9 +45,15 @@ from ._generated import (  # noqa: F401
 )
 
 # Client-side constant (not part of the wire schema).
-DEFAULT_COUNTY = "travis"
+DEFAULT_REGION = "travis"
+#: Deprecated alias of DEFAULT_REGION. The API's area identifier was renamed
+#: from "county" to "region", because most served areas are not counties: `sf`
+#: is three of them, the Massachusetts entries are municipalities, and
+#: `interstates` is a multi-state corridor. The old name keeps working.
+DEFAULT_COUNTY = DEFAULT_REGION
 
 __all__ = [
+    "DEFAULT_REGION",
     "DEFAULT_COUNTY",
     # request models
     "GeofenceSelections",

@@ -19,7 +19,7 @@ from .exceptions import (
     ValidationError,
 )
 from .models import (
-    DEFAULT_COUNTY,
+    DEFAULT_REGION,
     BatchComputeResult,
     ComputeResult,
     DepotComputeResult,
@@ -42,9 +42,12 @@ _MODE_MODELS = {
     "route": RouteSelections,
     "depot": DepotSelections,
 }
-# Every valid key a bound config may carry: "county" plus the union of all
-# modes' selection fields.
-_KNOWN_CONFIG_KEYS = {"county"} | {
+# Every valid key a bound config may carry: the area identifier plus the union
+# of all modes' selection fields. Both spellings are accepted: configs saved by
+# earlier versions carry "county", and they are files on disk that we do not get
+# to migrate.
+_REGION_KEYS = ("region", "county")
+_KNOWN_CONFIG_KEYS = set(_REGION_KEYS) | {
     f for m in _MODE_MODELS.values() for f in m.model_fields
 }
 
@@ -69,7 +72,7 @@ class HumanBaselines:
                     exponential backoff.
         session:    bring your own ``requests.Session`` (otherwise one is made).
         config:     a baseline definition bound to this client — a dict of
-                    ``"county"`` plus any filter fields, OR a path to a JSON file
+                    ``"region"`` plus any filter fields, OR a path to a JSON file
                     written by ``save_config`` (a ``"mode"`` key is ignored).
                     Every ``compute*`` call inherits it (each mode uses the
                     subset of fields it understands); per-call args override it.
@@ -129,8 +132,8 @@ class HumanBaselines:
 
     @staticmethod
     def _validate_config(config: dict) -> dict:
-        """Validate a bound config: known field names + valid values. County is
-        allowed but not value-checked here (the server resolves it)."""
+        """Validate a bound config: known field names + valid values. The region
+        is allowed but not value-checked here (the server resolves it)."""
         unknown = set(config) - _KNOWN_CONFIG_KEYS
         if unknown:
             raise ValueError(
@@ -211,9 +214,24 @@ class HumanBaselines:
         # value is correct).
         return model.model_dump(mode="json", exclude_none=True, warnings=False)
 
-    def _county(self, county: str | None) -> str:
-        """Per-call county wins, else the bound config's, else the default."""
-        return county or self._config.get("county") or DEFAULT_COUNTY
+    def _region(self, region: str | None = None, county: str | None = None) -> str:
+        """Per-call region wins, else the bound config's, else the default.
+        ``county`` is the old name for the same thing and is still honoured."""
+        return (region or county
+                or self._config.get("region") or self._config.get("county")
+                or DEFAULT_REGION)
+
+    @staticmethod
+    def _region_keys(region: str) -> dict:
+        """The area identifier for a request body, under BOTH names.
+
+        An API older than this client reads ``county`` and, because its request
+        models allow extra keys, would silently ignore ``region`` and compute
+        its DEFAULT region instead — a 200 with another area's numbers. Newer
+        ones read ``region``. They are always equal, so either end is right.
+        Drop ``county`` once no reachable deployment predates the rename.
+        """
+        return {"region": region, "county": region}
 
     @staticmethod
     def _pin(p: PinLike) -> dict:
@@ -249,44 +267,55 @@ class HumanBaselines:
     # -- compute ------------------------------------------------------------
 
     def compute(self, selections: GeofenceSelections | dict | None = None, *,
-                county: str | None = None, summary_only: bool = False,
-                **filters) -> ComputeResult:
+                region: str | None = None, county: str | None = None,
+                summary_only: bool = False, **filters) -> ComputeResult:
         """Geofence (S2-cell) crash rate. Inherits the bound config; per-call
         args override it. ``summary_only=True`` drops the per-cell ``cells``
-        breakdown (the bulk of the response), keeping just the county-wide
-        scalars."""
+        breakdown (the bulk of the response), keeping just the region-wide
+        scalars. ``county`` is the old name for ``region``."""
         sel = self._resolve_selections(GeofenceSelections, selections, filters)
         data = self._request("POST", "/compute", json={
-            "county": self._county(county), "selections": sel,
+            **self._region_keys(self._region(region, county)),
+            "selections": sel,
             "summary_only": summary_only,
         })
         return ComputeResult.model_validate(data)
 
-    def compute_batch(self, counties: list[str],
+    def compute_batch(self, regions: list[str] | None = None,
                       selections: GeofenceSelections | dict | None = None, *,
+                      counties: list[str] | None = None,
                       summary_only: bool = True, **filters) -> BatchComputeResult:
-        """Geofence crash rate across several counties in ONE request — for
-        comparing counties side by side. Applies the same (bound + per-call)
-        selections to every county. Returns a per-county list of
-        ``{county, result, error}`` (same order as ``counties``); a county whose
+        """Geofence crash rate across several regions in ONE request — for
+        comparing regions side by side. Applies the same (bound + per-call)
+        selections to every region. Returns a per-region list of
+        ``{region, result, error}`` (same order as ``regions``); a region whose
         compute fails (e.g. a filter value it doesn't support) comes back with
         ``error`` set rather than failing the whole call. Defaults to
-        summary-only (no per-cell breakdown)."""
+        summary-only (no per-cell breakdown).
+
+        ``counties=`` is the old name for ``regions=``. The first argument is
+        still positional, so ``compute_batch(["sf", "travis"])`` is unchanged."""
+        if regions is None:
+            regions = counties
+        if not regions:
+            raise ValueError("compute_batch needs at least one region")
         sel = self._resolve_selections(GeofenceSelections, selections, filters)
-        items = [{"county": c, "selections": sel} for c in counties]
+        items = [{**self._region_keys(r), "selections": sel} for r in regions]
         data = self._request("POST", "/compute/batch",
                              json={"items": items, "summary_only": summary_only})
         return BatchComputeResult.model_validate(data)
 
     def compute_route(self, segment_ids: list[tuple[str, int]],
                       selections: RouteSelections | dict | None = None, *,
-                      county: str | None = None, **filters) -> RouteComputeResult:
+                      region: str | None = None, county: str | None = None,
+                      **filters) -> RouteComputeResult:
         """Crash rate over a sequence of interstate (route, milepost) segments.
         For route-capable regions (``interstates`` — see ``regions()``).
-        Inherits the bound config; per-call args override it."""
+        Inherits the bound config; per-call args override it. ``county`` is the
+        old name for ``region``."""
         sel = self._resolve_selections(RouteSelections, selections, filters)
         data = self._request("POST", "/compute/route", json={
-            "county": self._county(county),
+            **self._region_keys(self._region(region, county)),
             "segment_ids": [list(s) for s in segment_ids],
             "selections": sel,
         })
@@ -294,14 +323,15 @@ class HumanBaselines:
 
     def compute_depot_route(self, depot_a: PinLike, depot_b: PinLike,
                             selections: DepotSelections | dict | None = None, *,
-                            county: str | None = None, **filters) -> DepotComputeResult:
+                            region: str | None = None, county: str | None = None,
+                            **filters) -> DepotComputeResult:
         """Full depot-to-depot trip rate (access + interstate + access legs).
         For depot-capable regions (``interstates`` — see ``regions()``). Pins
         are (lat, lon) tuples, DepotPins, or dicts. Inherits the bound config;
-        per-call args override it."""
+        per-call args override it. ``county`` is the old name for ``region``."""
         sel = self._resolve_selections(DepotSelections, selections, filters)
         data = self._request("POST", "/compute/depot-route", json={
-            "county": self._county(county),
+            **self._region_keys(self._region(region, county)),
             "depot_a": self._pin(depot_a),
             "depot_b": self._pin(depot_b),
             "selections": sel,
@@ -312,21 +342,22 @@ class HumanBaselines:
 
     def config(self, mode: str = "geofence") -> dict:
         """The full effective config for a mode — your bound values plus every
-        default filled in, with county. This is the complete definition a
+        default filled in, with the region. This is the complete definition a
         compute call in this mode would use."""
         if mode not in _MODE_MODELS:
             raise ValueError(f"unknown mode {mode!r}; choose from {sorted(_MODE_MODELS)}")
         model_cls = _MODE_MODELS[mode]
         bound = {k: v for k, v in self._config.items() if k in model_cls.model_fields}
         sel = model_cls(**bound).model_dump(mode="json", warnings=False)
-        return {"county": self._county(None), **sel}
+        # Writes "region" only; both spellings are read back (_KNOWN_CONFIG_KEYS).
+        return {"region": self._region(), **sel}
 
     def changes(self, mode: str = "geofence") -> dict:
         """Only the settings that differ from this mode's defaults (the
         deviations), including county if you've changed it."""
         full = self.config(mode)
         defaults = _MODE_MODELS[mode]().model_dump(mode="json", warnings=False)
-        defaults["county"] = DEFAULT_COUNTY
+        defaults["region"] = DEFAULT_REGION
         return {k: v for k, v in full.items() if v != defaults.get(k)}
 
     def with_config(self, config: dict | None = None, **fields) -> "HumanBaselines":

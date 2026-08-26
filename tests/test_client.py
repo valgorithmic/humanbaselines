@@ -110,9 +110,24 @@ def test_compute_batch_parses_per_county_results():
     import json
     sent = json.loads(responses.calls[0].request.body)
     assert sent["summary_only"] is True
-    assert [it["county"] for it in sent["items"]] == ["travis", "houston"]
-    # same (resolved) selections applied to every county
+    assert [it["region"] for it in sent["items"]] == ["travis", "houston"]
+    # same (resolved) selections applied to every region
     assert sent["items"][0]["selections"] == sent["items"][1]["selections"]
+
+
+@responses.activate
+def test_compute_batch_sends_both_region_names_and_accepts_counties_kwarg():
+    """`counties=` is how every call written before the rename passes the list,
+    and the first argument stays positional so those calls are untouched."""
+    import json
+    responses.post(f"{V1}/compute/batch", json={"results": []}, status=200)
+    client().compute_batch(counties=["travis", "sf"])
+    sent = json.loads(responses.calls[0].request.body)
+    assert [i["region"] for i in sent["items"]] == ["travis", "sf"]
+    assert [i["county"] for i in sent["items"]] == ["travis", "sf"]
+
+    with pytest.raises(ValueError):
+        client().compute_batch()
 
 
 @responses.activate
@@ -294,11 +309,28 @@ def test_per_call_invalid_field_for_mode_raises():
         hb.compute_route(segment_ids=[("I-35", 250)], road_type=["interstate"])
 
 
-def test_county_precedence():
+def test_region_precedence():
+    hb = client(config={"region": "sf", "outcome": "fatal"})
+    assert hb._region() == "sf"                 # bound
+    assert hb._region("travis") == "travis"     # per-call wins
+    assert client()._region() == "travis"       # default
+
+
+def test_county_is_still_accepted_everywhere():
+    """The old name has to keep working: it is in configs saved to disk by
+    earlier versions, and in every call written against them."""
     hb = client(config={"county": "sf", "outcome": "fatal"})
-    assert hb._county(None) == "sf"           # bound
-    assert hb._county("travis") == "travis"   # per-call wins
-    assert client()._county(None) == "travis"  # default
+    assert hb._region() == "sf"                      # bound, old spelling
+    assert hb._region(None, "travis") == "travis"    # per-call county=
+    # region= wins when both are given, since it is the current name
+    assert hb._region("boston", "travis") == "boston"
+
+
+def test_requests_carry_both_region_names():
+    """An API predating the rename reads `county` and ignores an unknown
+    `region`, silently computing its default region instead — so both go on
+    the wire, always equal."""
+    assert client()._region_keys("sf") == {"region": "sf", "county": "sf"}
 
 
 def test_save_and_from_config_roundtrip(tmp_path):
@@ -326,8 +358,8 @@ def test_config_fills_defaults():
     full = hb.config("geofence")
     assert full["outcome"] == "fatal"                 # bound override
     assert full["weather"] == ["dry", "rain", "fog"]  # filled default
-    assert full["county"] == "travis"
-    assert len(full) == len(GeofenceSelections.model_fields) + 1  # +county
+    assert full["region"] == "travis"
+    assert len(full) == len(GeofenceSelections.model_fields) + 1  # +region
     # route mode exposes ci_method, not road_type
     route = hb.config("route")
     assert "ci_method" in route and "road_type" not in route
@@ -336,11 +368,12 @@ def test_config_fills_defaults():
 
 
 def test_changes_shows_only_deviations():
-    hb = client(config={"county": "travis", "outcome": "fatal", "weather": ["dry", "rain", "fog"]})
-    # outcome differs from default; weather equals default; county equals default
+    hb = client(config={"region": "travis", "outcome": "fatal", "weather": ["dry", "rain", "fog"]})
+    # outcome differs from default; weather equals default; region equals default
     assert hb.changes() == {"outcome": "fatal"}
-    # a non-default county shows up
-    assert client(config={"county": "sf"}).changes() == {"county": "sf"}
+    # a non-default region shows up, under the current name whichever was bound
+    assert client(config={"region": "sf"}).changes() == {"region": "sf"}
+    assert client(config={"county": "sf"}).changes() == {"region": "sf"}
     # no bound config → no changes
     assert client().changes() == {}
 

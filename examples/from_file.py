@@ -18,7 +18,7 @@ ODD = Path(__file__).parent / "odd.json"
 # writes it via hb.save_config("odd.json")).
 if not ODD.exists():
     HumanBaselines(config={
-        "county": "travis",
+        "region": "travis",
         "outcome": "fatal",
         "ego_vehicle": ["cars", "light_trucks"],
     }).save_config(ODD)
