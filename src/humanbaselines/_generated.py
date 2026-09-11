@@ -14,13 +14,28 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 
 
+class ApiKeyRequest(BaseModel):
+    email: str = Field(..., title='Email')
+
+
+class ApiKeyResponse(BaseModel):
+    api_key: str = Field(..., title='Api Key')
+    email: str = Field(..., title='Email')
+    emailed: bool = Field(..., title='Emailed')
+    env_var: str = Field('HUMANBASELINES_API_KEY', title='Env Var')
+
+
 class CiMethod(Enum):
     fay_feuer = 'fay_feuer'
     empirical_bayes = 'empirical_bayes'
 
 
 class ComputeBatchItem(BaseModel):
-    county: str = Field('travis', title='County')
+    region: str = Field(
+        'travis',
+        description='Which served region to compute. Discover the set with /v1/regions.',
+        title='Region',
+    )
     selections: dict[str, Any] | None = Field(None, title='Selections')
     cell_filter: list[str] | None = Field(None, title='Cell Filter')
 
@@ -31,7 +46,11 @@ class ComputeBatchRequest(BaseModel):
 
 
 class ComputeRequest(BaseModel):
-    county: str = Field('travis', title='County')
+    region: str = Field(
+        'travis',
+        description='Which served region to compute. Discover the set with /v1/regions.',
+        title='Region',
+    )
     selections: dict[str, Any] | None = Field(None, title='Selections')
     cell_filter: list[str] | None = Field(None, title='Cell Filter')
     summary_only: bool = Field(False, title='Summary Only')
@@ -42,9 +61,19 @@ class SegmentId(RootModel[tuple[str, int]]):
 
 
 class ComputeRouteRequest(BaseModel):
-    county: str = Field('travis', title='County')
+    region: str = Field(
+        'travis',
+        description='Which served region to compute. Discover the set with /v1/regions.',
+        title='Region',
+    )
     segment_ids: list[SegmentId] = Field(..., title='Segment Ids')
     selections: dict[str, Any] | None = Field(None, title='Selections')
+
+
+class DayTypeFilter(Enum):
+    any = 'any'
+    weekday = 'weekday'
+    weekend = 'weekend'
 
 
 class DenominatorVmt(Enum):
@@ -61,6 +90,11 @@ class DepotComputeResult(BaseModel):
 class DepotPin(BaseModel):
     lat: float = Field(..., title='Lat')
     lon: float = Field(..., title='Lon')
+
+
+class DeskReports(Enum):
+    exclude = 'exclude'
+    include_all = 'include_all'
 
 
 class DriverImpairment(Enum):
@@ -96,7 +130,7 @@ class MultiplierVmt(Enum):
 
 
 class OperatorWeighting(Enum):
-    county_wide = 'county_wide'
+    region_wide = 'region_wide'
     robotaxi = 'robotaxi'
 
 
@@ -131,12 +165,14 @@ class PerSegmentResult(BaseModel):
 
 
 class RegionInfo(BaseModel):
+    region: str = Field(..., title='Region')
     county: str = Field(..., title='County')
     modes: list[str] = Field(..., title='Modes')
 
 
 class RegionsResponse(BaseModel):
     regions: list[RegionInfo] = Field(..., title='Regions')
+    default_region: str = Field('travis', title='Default Region')
     default_county: str = Field('travis', title='Default County')
 
 
@@ -153,7 +189,7 @@ class RouteComputeResult(BaseModel):
     )
     N: float = Field(..., title='N')
     trip_miles: float = Field(..., title='Trip Miles')
-    rate: float = Field(..., title='Rate')
+    rate: float | None = Field(..., title='Rate')
     rate_low: float | None = Field(None, title='Rate Low')
     rate_high: float | None = Field(None, title='Rate High')
     variance: float | None = Field(None, title='Variance')
@@ -171,6 +207,34 @@ class Tier3Mode(Enum):
 class Tiling(Enum):
     s2 = 's2'
     h3 = 'h3'
+
+
+class TimeOfDayFilter(Enum):
+    any = 'any'
+    h00 = 'h00'
+    h01 = 'h01'
+    h02 = 'h02'
+    h03 = 'h03'
+    h04 = 'h04'
+    h05 = 'h05'
+    h06 = 'h06'
+    h07 = 'h07'
+    h08 = 'h08'
+    h09 = 'h09'
+    h10 = 'h10'
+    h11 = 'h11'
+    h12 = 'h12'
+    h13 = 'h13'
+    h14 = 'h14'
+    h15 = 'h15'
+    h16 = 'h16'
+    h17 = 'h17'
+    h18 = 'h18'
+    h19 = 'h19'
+    h20 = 'h20'
+    h21 = 'h21'
+    h22 = 'h22'
+    h23 = 'h23'
 
 
 class UnderReporting(Enum):
@@ -204,7 +268,11 @@ class WeatherFilter(Enum):
 
 
 class ComputeDepotRouteRequest(BaseModel):
-    county: str = Field('travis', title='County')
+    region: str = Field(
+        'travis',
+        description='Which served region to compute. Discover the set with /v1/regions.',
+        title='Region',
+    )
     depot_a: DepotPin
     depot_b: DepotPin
     selections: dict[str, Any] | None = Field(None, title='Selections')
@@ -217,10 +285,10 @@ class ComputeResult(BaseModel):
     N: float = Field(..., title='N')
     D_miles: float = Field(..., title='D Miles')
     D_billions: float = Field(..., title='D Billions')
-    rate: float = Field(..., title='Rate')
+    rate: float | None = Field(..., title='Rate')
     rate_low: float | None = Field(None, title='Rate Low')
     rate_high: float | None = Field(None, title='Rate High')
-    rate_non_dyn: float = Field(..., title='Rate Non Dyn')
+    rate_non_dyn: float | None = Field(..., title='Rate Non Dyn')
     rate_dyn: float | None = Field(None, title='Rate Dyn')
     multiplier: float | None = Field(None, title='Multiplier')
     cells: list[PerCellResult] | None = Field(None, title='Cells')
@@ -237,9 +305,7 @@ class DepotSelections(BaseModel):
     )
     unresolved_nfs: Tier3Mode = 'marginal'
     in_transport: InTransport = 'in_transport'
-    weather: list[WeatherFilter] | WeatherFilter = Field(
-        ['dry', 'rain', 'fog'], title='Weather'
-    )
+    weather: list[WeatherFilter] | WeatherFilter = Field('any', title='Weather')
     light_condition: list[LightFilter] | LightFilter = Field(
         'any', title='Light Condition'
     )
@@ -277,22 +343,25 @@ class GeofenceSelections(BaseModel):
     )
     unresolved_nfs: Tier3Mode = 'marginal'
     in_transport: InTransport = 'in_transport'
+    desk_reports: DeskReports = 'exclude'
     road_type: list[RoadGroup] | RoadGroup = Field(
         ['collector_local', 'arterial', 'other_freeway', 'interstate'],
         title='Road Type',
     )
-    operator_weighting: OperatorWeighting = 'county_wide'
+    operator_weighting: OperatorWeighting = 'region_wide'
     multiplier_vmt: MultiplierVmt = 'calibrated'
     operator_weight: OperatorWeight | None = Field(None, title='Operator Weight')
     denominator_vmt: DenominatorVmt = 'calibrated'
     tiling: Tiling = 's2'
     under_reporting: UnderReporting = 'none'
-    weather: list[WeatherFilter] | WeatherFilter = Field(
-        ['dry', 'rain', 'fog'], title='Weather'
-    )
+    weather: list[WeatherFilter] | WeatherFilter = Field('any', title='Weather')
     light_condition: list[LightFilter] | LightFilter = Field(
         'any', title='Light Condition'
     )
+    time_of_day: list[TimeOfDayFilter] | TimeOfDayFilter = Field(
+        'any', title='Time Of Day'
+    )
+    day_type: DayTypeFilter = 'any'
     crash_year: list[int] | int = Field([2022], title='Crash Year')
 
 
@@ -311,9 +380,7 @@ class RouteSelections(BaseModel):
     )
     unresolved_nfs: Tier3Mode = 'marginal'
     in_transport: InTransport = 'in_transport'
-    weather: list[WeatherFilter] | WeatherFilter = Field(
-        ['dry', 'rain', 'fog'], title='Weather'
-    )
+    weather: list[WeatherFilter] | WeatherFilter = Field('any', title='Weather')
     light_condition: list[LightFilter] | LightFilter = Field(
         'any', title='Light Condition'
     )
@@ -323,42 +390,58 @@ class RouteSelections(BaseModel):
 
 
 class V1BatchItem(BaseModel):
-    county: str = Field('travis', title='County')
+    region: str = Field(
+        'travis',
+        description='Which served region to compute. Discover the set with /v1/regions.',
+        title='Region',
+    )
     selections: GeofenceSelections | None = None
 
 
 class V1BatchRequest(BaseModel):
     items: list[V1BatchItem] | None = Field(
         None,
-        description="One (county, selections) combination per entry. Selections are per-item because a value valid in one county can be invalid in another, so the batch can't share a single selection set.",
+        description="One (region, selections) combination per entry. Selections are per-item because a value valid in one region can be invalid in another, so the batch can't share a single selection set.",
         title='Items',
     )
     summary_only: bool = Field(
         True,
-        description='Batch defaults to summary-only (no per-cell breakdown), as it exists for multi-county comparison. Set false to include `cells`.',
+        description='Batch defaults to summary-only (no per-cell breakdown), as it exists for multi-region comparison. Set false to include `cells`.',
         title='Summary Only',
     )
 
 
 class V1ComputeRequest(BaseModel):
-    county: str = Field('travis', title='County')
+    region: str = Field(
+        'travis',
+        description='Which served region to compute. Discover the set with /v1/regions.',
+        title='Region',
+    )
     selections: GeofenceSelections | None = None
     summary_only: bool = Field(
         False,
-        description="Drop the per-cell `cells` breakdown (returned as []), keeping just the county-wide scalars. Cuts the bulk of the response for callers that don't need the map heatmap.",
+        description="Drop the per-cell `cells` breakdown (returned as []), keeping just the region-wide scalars. Cuts the bulk of the response for callers that don't need the map heatmap.",
         title='Summary Only',
     )
 
 
 class V1DepotRequest(BaseModel):
-    county: str = Field('travis', title='County')
+    region: str = Field(
+        'travis',
+        description='Which served region to compute. Discover the set with /v1/regions.',
+        title='Region',
+    )
     depot_a: DepotPin
     depot_b: DepotPin
     selections: DepotSelections | None = None
 
 
 class V1RouteRequest(BaseModel):
-    county: str = Field('travis', title='County')
+    region: str = Field(
+        'travis',
+        description='Which served region to compute. Discover the set with /v1/regions.',
+        title='Region',
+    )
     segment_ids: list[SegmentId] = Field(
         ...,
         description='Ordered [route, milepost] pairs, e.g. [["I-35", 250], ["I-35", 251]].',
@@ -371,6 +454,7 @@ class BatchItemResult(BaseModel):
     model_config = ConfigDict(
         extra='allow',
     )
+    region: str = Field(..., title='Region')
     county: str = Field(..., title='County')
     result: ComputeResult | None = None
     error: str | None = Field(None, title='Error')
