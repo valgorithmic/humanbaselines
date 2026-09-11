@@ -64,7 +64,7 @@ def test_compute_sends_key_and_parses():
     import json
     sent = json.loads(responses.calls[0].request.body)
     assert sent["county"] == "travis"
-    assert sent["selections"]["weather"] == ["dry", "rain", "fog"]
+    assert sent["selections"]["weather"] == "any"
 
 
 @responses.activate
@@ -94,17 +94,22 @@ def test_compute_summary_only_sends_flag():
 @responses.activate
 def test_compute_batch_parses_per_county_results():
     from humanbaselines import BatchComputeResult
+    # The API returns both names on every batch item (`region` is the current
+    # one, `county` the pre-rename alias it still emits), and the generated
+    # models require both, so the fixture carries both.
     body = {
         "results": [
-            {"county": "travis", "result": {**_COMPUTE_BODY, "cells": []}, "error": None},
-            {"county": "houston", "result": None, "error": "no HPMS columns"},
+            {"region": "travis", "county": "travis",
+             "result": {**_COMPUTE_BODY, "cells": []}, "error": None},
+            {"region": "houston", "county": "houston",
+             "result": None, "error": "no HPMS columns"},
         ]
     }
     responses.post(f"{V1}/compute/batch", json=body, status=200)
     out = client().compute_batch(["travis", "houston"], outcome="police_reported")
     assert isinstance(out, BatchComputeResult)
     assert len(out.results) == 2
-    assert out.results[0].county == "travis"
+    assert out.results[0].region == "travis" and out.results[0].county == "travis"
     assert out.results[0].result.rate == pytest.approx(4.055)
     assert out.results[1].result is None and out.results[1].error == "no HPMS columns"
     import json
@@ -344,7 +349,7 @@ def test_save_and_from_config_roundtrip(tmp_path):
     saved = json.loads(p.read_text())
     assert saved["mode"] == "geofence"
     assert {k: v for k, v in saved.items() if k != "mode"} == hb.config()
-    assert saved["weather"] == ["dry", "rain", "fog"]              # a filled default
+    assert saved["weather"] == "any"                               # a filled default
     # Both load paths work: from_config(path) and config=path on the constructor.
     hb2 = HumanBaselines.from_config(p, api_key="testkey", max_retries=0)
     hb3 = HumanBaselines(api_key="testkey", max_retries=0, config=p)
@@ -357,7 +362,7 @@ def test_config_fills_defaults():
     hb = client(config={"outcome": "fatal"})
     full = hb.config("geofence")
     assert full["outcome"] == "fatal"                 # bound override
-    assert full["weather"] == ["dry", "rain", "fog"]  # filled default
+    assert full["weather"] == "any"                   # filled default
     assert full["region"] == "travis"
     assert len(full) == len(GeofenceSelections.model_fields) + 1  # +region
     # route mode exposes ci_method, not road_type
@@ -368,7 +373,7 @@ def test_config_fills_defaults():
 
 
 def test_changes_shows_only_deviations():
-    hb = client(config={"region": "travis", "outcome": "fatal", "weather": ["dry", "rain", "fog"]})
+    hb = client(config={"region": "travis", "outcome": "fatal", "weather": "any"})
     # outcome differs from default; weather equals default; region equals default
     assert hb.changes() == {"outcome": "fatal"}
     # a non-default region shows up, under the current name whichever was bound

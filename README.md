@@ -67,8 +67,19 @@ hb.compute(selections=GeofenceSelections(outcome=Outcome.fatal)) # typed model
 hb.compute(selections={"outcome": "fatal"})                      # dict
 ```
 
-Omitted filters fall back to the API's defaults (these reproduce the web UI's
-headline numbers).
+Omitted filters fall back to the API's defaults. Two are worth knowing, because
+they are the defaults rather than the widest setting:
+
+- `in_transport="in_transport"` drops vehicles that were parked when struck.
+- `desk_reports="exclude"` drops crashes the driver reported at a police station
+  instead of an officer attending. Only a source that marks the channel has any
+  to drop, which today means Chicago, and excluding them is what makes its rate
+  mean the same thing as another region's. Pass `desk_reports="include_all"` to
+  count them, and expect that region's numbers to jump.
+
+Validation is client-side, so a filter the installed client predates is rejected
+locally even when the API supports it. Upgrade the package if a filter you can
+see in `hb.filters()` is refused here.
 
 ### Binding a baseline definition
 
