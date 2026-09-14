@@ -198,6 +198,14 @@ class RouteComputeResult(BaseModel):
     crash_sources: list[str] | None = Field(None, title='Crash Sources')
 
 
+class SpeedBand(Enum):
+    le25 = 'le25'
+    field_30_35 = '30_35'
+    field_40_45 = '40_45'
+    field_50_55 = '50_55'
+    ge60 = 'ge60'
+
+
 class Tier3Mode(Enum):
     marginal = 'marginal'
     none = 'none'
@@ -347,6 +355,9 @@ class GeofenceSelections(BaseModel):
     road_type: list[RoadGroup] | RoadGroup = Field(
         ['collector_local', 'arterial', 'other_freeway', 'interstate'],
         title='Road Type',
+    )
+    posted_speed: list[SpeedBand] | SpeedBand = Field(
+        ['le25', '30_35', '40_45', '50_55', 'ge60'], title='Posted Speed'
     )
     operator_weighting: OperatorWeighting = 'region_wide'
     multiplier_vmt: MultiplierVmt = 'calibrated'
