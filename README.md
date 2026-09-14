@@ -78,10 +78,12 @@ they are the defaults rather than the widest setting:
   count them, and expect that region's numbers to jump.
 
 One filter is served for a single region so far. `posted_speed` takes a list of
-bands of the posted speed limit (`le25`, `30_35`, `40_45`, `50_55`, `ge60`) and
-applies them to crashes and miles alike. It is built for `sf`. In every other
-region any selection is a no-op and returns the unfiltered rate, so check the
-region before quoting a per-band number.
+5 mph steps of the posted speed limit (`le15`, `s20`, `s25`, ... `s65`, `ge70`)
+and applies them to crashes and miles alike. Pass a contiguous run for a window,
+for example `["le15", "s20", "s25", "s30", "s35"]` for roads posted at 35 mph or
+less. It is built for `sf`. In every other region any selection is a no-op and
+returns the unfiltered rate, so check the region before quoting a per-speed
+number.
 
 Validation is client-side, so a filter the installed client predates is rejected
 locally even when the API supports it. Upgrade the package if a filter you can

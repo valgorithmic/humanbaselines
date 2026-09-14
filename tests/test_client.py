@@ -159,11 +159,11 @@ def test_posted_speed_kwarg_validates_and_serializes():
     # Multi-select band of the posted speed limit. A list or a single band is
     # accepted client-side and lands on the request body as sent.
     responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
-    client().compute(region="sf", posted_speed=["le25", "30_35"])
-    client().compute(region="sf", posted_speed="ge60")
+    client().compute(region="sf", posted_speed=["le15", "s20", "s25"])
+    client().compute(region="sf", posted_speed="ge70")
     import json
-    assert json.loads(responses.calls[0].request.body)["selections"]["posted_speed"] == ["le25", "30_35"]
-    assert json.loads(responses.calls[1].request.body)["selections"]["posted_speed"] == "ge60"
+    assert json.loads(responses.calls[0].request.body)["selections"]["posted_speed"] == ["le15", "s20", "s25"]
+    assert json.loads(responses.calls[1].request.body)["selections"]["posted_speed"] == "ge70"
     with pytest.raises(Exception):  # pydantic ValidationError, before any request
         client().compute(region="sf", posted_speed=["warp"])
     assert len(responses.calls) == 2

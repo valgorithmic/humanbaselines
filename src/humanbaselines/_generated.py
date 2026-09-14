@@ -199,11 +199,18 @@ class RouteComputeResult(BaseModel):
 
 
 class SpeedBand(Enum):
-    le25 = 'le25'
-    field_30_35 = '30_35'
-    field_40_45 = '40_45'
-    field_50_55 = '50_55'
-    ge60 = 'ge60'
+    le15 = 'le15'
+    s20 = 's20'
+    s25 = 's25'
+    s30 = 's30'
+    s35 = 's35'
+    s40 = 's40'
+    s45 = 's45'
+    s50 = 's50'
+    s55 = 's55'
+    s60 = 's60'
+    s65 = 's65'
+    ge70 = 'ge70'
 
 
 class Tier3Mode(Enum):
@@ -357,7 +364,21 @@ class GeofenceSelections(BaseModel):
         title='Road Type',
     )
     posted_speed: list[SpeedBand] | SpeedBand = Field(
-        ['le25', '30_35', '40_45', '50_55', 'ge60'], title='Posted Speed'
+        [
+            'le15',
+            's20',
+            's25',
+            's30',
+            's35',
+            's40',
+            's45',
+            's50',
+            's55',
+            's60',
+            's65',
+            'ge70',
+        ],
+        title='Posted Speed',
     )
     operator_weighting: OperatorWeighting = 'region_wide'
     multiplier_vmt: MultiplierVmt = 'calibrated'
