@@ -155,6 +155,21 @@ def test_crash_year_and_denominator_vmt_kwargs():
 
 
 @responses.activate
+def test_posted_speed_kwarg_validates_and_serializes():
+    # Multi-select band of the posted speed limit. A list or a single band is
+    # accepted client-side and lands on the request body as sent.
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    client().compute(region="sf", posted_speed=["le25", "30_35"])
+    client().compute(region="sf", posted_speed="ge60")
+    import json
+    assert json.loads(responses.calls[0].request.body)["selections"]["posted_speed"] == ["le25", "30_35"]
+    assert json.loads(responses.calls[1].request.body)["selections"]["posted_speed"] == "ge60"
+    with pytest.raises(Exception):  # pydantic ValidationError, before any request
+        client().compute(region="sf", posted_speed=["warp"])
+    assert len(responses.calls) == 2
+
+
+@responses.activate
 def test_operator_weighting_and_operator_weight_kwargs():
     # The renamed weighting toggle (operator_weighting=robotaxi) and the optional
     # numeric override (operator_weight) must validate client-side and serialize
