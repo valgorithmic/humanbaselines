@@ -81,7 +81,7 @@ One filter is served for a single region so far. `posted_speed` takes a list of
 5 mph steps of the posted speed limit (`le15`, `s20`, `s25`, ... `s65`, `ge70`)
 and applies them to crashes and miles alike. Pass a contiguous run for a window,
 for example `["le15", "s20", "s25", "s30", "s35"]` for roads posted at 35 mph or
-less. It is built for `sf`. In every other region any selection is a no-op and
+less. It is built for `sf` and `vegas`. In every other region any selection is a no-op and
 returns the unfiltered rate, so check the region before quoting a per-speed
 number.
 
