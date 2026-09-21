@@ -170,6 +170,43 @@ def test_posted_speed_kwarg_validates_and_serializes():
 
 
 @responses.activate
+def test_posted_speed_max_expands_to_the_bands_up_to_the_cap():
+    # An operating domain is a cap ("posted 45 or under"), so the client takes
+    # one and sends the contiguous run of bands the API accepts. Works as a
+    # kwarg, in a selections dict, and bound in the client config.
+    import json
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    up_to_45 = ["le15", "s20", "s25", "s30", "s35", "s40", "s45"]
+    client().compute(region="sf", posted_speed_max=45)
+    client().compute(region="sf", selections={"posted_speed_max": 45})
+    client(config={"region": "sf", "posted_speed_max": 45}).compute()
+    for call in responses.calls:
+        assert json.loads(call.request.body)["selections"]["posted_speed"] == up_to_45
+        assert "posted_speed_max" not in json.loads(call.request.body)["selections"]
+    assert len(responses.calls) == 3
+    # The cap is not part of the wire schema; the bound config reads it back as bands.
+    assert client(config={"posted_speed_max": 15}).changes()["posted_speed"] == ["le15"]
+
+
+def test_posted_speed_max_rejects_off_step_and_all_band_caps():
+    from humanbaselines import speed_bands_up_to
+    assert speed_bands_up_to(65) == ["le15", "s20", "s25", "s30", "s35", "s40",
+                                     "s45", "s50", "s55", "s60", "s65"]
+    with pytest.raises(ValueError, match="5 mph steps"):
+        speed_bands_up_to(42)
+    with pytest.raises(ValueError, match="unfiltered"):
+        speed_bands_up_to(70)  # every band: the same as no filter
+    with pytest.raises(ValueError):
+        speed_bands_up_to(10)  # below the open tail
+    with pytest.raises(TypeError):
+        speed_bands_up_to("45")
+    with pytest.raises(TypeError, match="not both"):
+        client().compute(region="sf", posted_speed_max=45, posted_speed=["le15"])
+    with pytest.raises(Exception):  # posted_speed is geofence-only
+        client().compute_route([("h1", 1)], posted_speed_max=45)
+
+
+@responses.activate
 def test_operator_weighting_and_operator_weight_kwargs():
     # The renamed weighting toggle (operator_weighting=robotaxi) and the optional
     # numeric override (operator_weight) must validate client-side and serialize

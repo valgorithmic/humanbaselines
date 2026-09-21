@@ -20,6 +20,7 @@ from .exceptions import (
 )
 from .models import (
     DEFAULT_REGION,
+    speed_bands_up_to,
     BatchComputeResult,
     ComputeResult,
     DepotComputeResult,
@@ -50,6 +51,27 @@ _REGION_KEYS = ("region", "county")
 _KNOWN_CONFIG_KEYS = set(_REGION_KEYS) | {
     f for m in _MODE_MODELS.values() for f in m.model_fields
 }
+# Client-side sugar, expanded before validation: a speed cap in mph becomes the
+# contiguous run of `posted_speed` bands the API takes.
+_SPEED_MAX_KEY = "posted_speed_max"
+
+
+def _expand_posted_speed_max(fields: dict) -> dict:
+    """Replace ``posted_speed_max=45`` with ``posted_speed=[le15 ... s45]``.
+
+    Operating domains are stated as a cap, so the client takes one. Passing the
+    cap together with an explicit ``posted_speed`` list is ambiguous and raises.
+    """
+    if _SPEED_MAX_KEY not in fields:
+        return fields
+    out = dict(fields)
+    cap = out.pop(_SPEED_MAX_KEY)
+    if cap is None:
+        return out
+    if "posted_speed" in out:
+        raise TypeError("pass either posted_speed_max or posted_speed, not both")
+    out["posted_speed"] = speed_bands_up_to(cap)
+    return out
 
 
 class HumanBaselines:
@@ -128,7 +150,7 @@ class HumanBaselines:
             config = json.loads(Path(config).read_text())
         if not isinstance(config, dict):
             raise TypeError(f"config must be a dict, path, or None (got {type(config).__name__})")
-        return {k: v for k, v in config.items() if k != "mode"}
+        return _expand_posted_speed_max({k: v for k, v in config.items() if k != "mode"})
 
     @staticmethod
     def _validate_config(config: dict) -> dict:
@@ -191,9 +213,9 @@ class HumanBaselines:
         if selections is not None and filters:
             raise TypeError("pass either `selections` or filter kwargs, not both")
         if selections is None:
-            return dict(filters)
+            return _expand_posted_speed_max(filters)
         if isinstance(selections, dict):
-            return dict(selections)
+            return _expand_posted_speed_max(selections)
         if isinstance(selections, model_cls):
             return selections.model_dump(exclude_unset=True)
         raise TypeError(
