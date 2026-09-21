@@ -19,6 +19,7 @@ from .exceptions import (
     ValidationError,
 )
 from .models import (
+    speed_bands_up_to,
     BatchComputeResult,
     BatchItemResult,
     CiMethod,
@@ -43,6 +44,7 @@ from .models import (
     OperatorWeighting,
     RouteComputeResult,
     RouteSelections,
+    SpeedBand,
     Tier3Mode,
     UnderReporting,
     VehicleClass,
@@ -52,6 +54,7 @@ from .models import (
 __all__ = [
     "__version__",
     "HumanBaselines",
+    "speed_bands_up_to",
     # exceptions
     "HumanBaselinesError",
     "APIError",
@@ -81,6 +84,7 @@ __all__ = [
     "Outcome",
     "VehicleClass",
     "RoadGroup",
+    "SpeedBand",
     "Tier3Mode",
     "InTransport",
     "OperatorWeighting",

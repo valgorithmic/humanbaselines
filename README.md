@@ -77,6 +77,21 @@ they are the defaults rather than the widest setting:
   mean the same thing as another region's. Pass `desk_reports="include_all"` to
   count them, and expect that region's numbers to jump.
 
+`posted_speed` filters by the posted speed limit, and applies to crashes and
+miles alike. Most operating domains state it as a cap, so pass one in mph:
+
+```python
+hb.compute(region="sf", posted_speed_max=45)     # roads posted at 45 mph or less
+```
+
+The cap must be one of the 5 mph steps from 15 to 65. It expands client-side
+into the run of bands the API takes (`le15`, `s20`, ... `s45`), which you can
+also pass directly as `posted_speed=[...]` for a window that is not anchored at
+the bottom. The lowest band is an open tail, so a cap of 15 covers anything
+posted below 15 too. It is built for `sf` and `vegas`. In every other region any
+selection is a no-op and returns the unfiltered rate, so check the region before
+quoting a per-speed number.
+
 Validation is client-side, so a filter the installed client predates is rejected
 locally even when the API supports it. Upgrade the package if a filter you can
 see in `hb.filters()` is refused here.
