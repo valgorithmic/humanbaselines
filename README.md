@@ -120,6 +120,12 @@ hb.changes()                       # only the settings that differ from the defa
 (each mode exposes different fields). `config()` is the complete definition a
 compute call would use; `changes()` is just your deviations from the defaults.
 
+Only the fields you set are sent. The server fills every other field with the
+region's own default, which can differ from the tool-wide one shown by
+`config()`. For example, `crash_year` defaults to 2023 in Boston and the Florida
+regions, since Florida's crash data starts in 2023. Pass `crash_year` explicitly
+when you need a specific year.
+
 The bound config is validated when you create the client (unknown fields or bad
 values raise immediately). It applies to **all modes** - each compute mode uses
 the subset of fields it understands (e.g. `road_type` only affects geofence,
@@ -133,7 +139,8 @@ strict = hb.with_config(under_reporting="adjusted")   # new client; hb is unchan
 
 hb.save_config("odd_fatal_cars.json")        # full config snapshot (check into a repo, share, diff)
 
-# Load it back - pass the path straight to the constructor:
+# Load it back - pass the path straight to the constructor. Values equal to the
+# tool-wide default are not re-sent, so region defaults still apply.
 hb2 = HumanBaselines(api_key="hbk_...", config="odd_fatal_cars.json")
 # (HumanBaselines.from_config(path, api_key=...) is an equivalent, explicit alias.)
 ```
