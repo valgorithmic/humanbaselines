@@ -60,11 +60,13 @@ def test_compute_sends_key_and_parses():
     assert len(result.cells) == 1 and result.cells[0].s2_cell == "123"
     # auth header was sent
     assert responses.calls[0].request.headers["X-API-Key"] == "testkey"
-    # selections serialized with the UI-aligned weather default
+    # only the fields the caller passed are serialized; the server fills the
+    # rest (weather "any", the region's crash_year) from its own defaults
     import json
     sent = json.loads(responses.calls[0].request.body)
     assert sent["county"] == "travis"
-    assert sent["selections"]["weather"] == "any"
+    assert sent["selections"] == {"outcome": "police_reported",
+                                  "ego_vehicle": ["cars", "light_trucks"]}
 
 
 @responses.activate
@@ -433,6 +435,62 @@ def test_changes_shows_only_deviations():
     assert client(config={"county": "sf"}).changes() == {"region": "sf"}
     # no bound config → no changes
     assert client().changes() == {}
+
+
+# --- region defaults: an unset field must reach the server as absent --------
+#
+# The server fills an absent field from the REGION's default: crash_year is 2023
+# for boston and the Florida regions (Florida has no 2022 at all), outcome is
+# any-injury for tokyo. Sending the model's tool-wide default instead beat those,
+# and hb.compute(region="miami") returned a rate of 0.000.
+
+@responses.activate
+def test_unset_crash_year_is_not_sent():
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    client().compute(region="miami")
+    sent = _sent(responses.calls[0])
+    assert sent["region"] == "miami"
+    assert "crash_year" not in sent["selections"]
+    assert sent["selections"] == {}
+
+
+@responses.activate
+def test_explicit_crash_year_is_sent_even_when_it_equals_the_default():
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    client().compute(region="boston", crash_year=[2022])
+    assert _sent(responses.calls[0])["selections"]["crash_year"] == [2022]
+
+
+@responses.activate
+def test_typed_selections_send_only_their_set_fields():
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    client().compute(region="tampa", selections=GeofenceSelections(outcome="fatal"))
+    assert _sent(responses.calls[0])["selections"] == {"outcome": "fatal"}
+
+
+@responses.activate
+def test_batch_leaves_crash_year_to_each_region():
+    responses.post(f"{V1}/compute/batch", json={"results": []}, status=200)
+    client().compute_batch(["miami", "orlando", "tampa", "sf"], outcome="ka")
+    items = _sent(responses.calls[0])["items"]
+    assert all(i["selections"] == {"outcome": "ka"} for i in items)
+
+
+@responses.activate
+def test_reloaded_snapshot_does_not_pin_filled_defaults(tmp_path):
+    # save_config writes every default, including crash_year [2022]. Reloading it
+    # must not bind those, or a saved Miami definition asks for a year Florida
+    # does not have. Its real choices survive.
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    p = tmp_path / "miami.json"
+    client(config={"region": "miami", "outcome": "fatal"}).save_config(p)
+    import json
+    assert json.loads(p.read_text())["crash_year"] == [2022]   # full snapshot on disk
+    hb = HumanBaselines.from_config(p, api_key="testkey", max_retries=0)
+    hb.compute()
+    sent = _sent(responses.calls[0])
+    assert sent["region"] == "miami"
+    assert sent["selections"] == {"outcome": "fatal"}
 
 
 # --- opt-in live smoke test -------------------------------------------------

@@ -150,6 +150,18 @@ class HumanBaselines:
             config = json.loads(Path(config).read_text())
         if not isinstance(config, dict):
             raise TypeError(f"config must be a dict, path, or None (got {type(config).__name__})")
+        if "mode" in config:
+            # A save_config snapshot fills in every default, so it cannot tell a
+            # value the user chose from one that was only filled in. Keep only the
+            # deviations. Binding the filled defaults would send them on every
+            # request and beat the server's per-region defaults, so a saved Miami
+            # definition would ask for crash_year 2022, a year Florida does not
+            # have. config() and changes() read the same either way.
+            defaults = _MODE_MODELS[config["mode"]]().model_dump(mode="json", warnings=False) \
+                if config["mode"] in _MODE_MODELS else {}
+            defaults["region"] = defaults["county"] = DEFAULT_REGION
+            config = {k: v for k, v in config.items()
+                      if k != "mode" and defaults.get(k, object()) != v}
         return _expand_posted_speed_max({k: v for k, v in config.items() if k != "mode"})
 
     @staticmethod
@@ -231,10 +243,17 @@ class HumanBaselines:
         # extra="forbid" keeps per-call overrides strict (a bad/foreign field
         # errors); bound fields were already filtered to this mode.
         model = model_cls(**{**bound, **overrides})
+        # exclude_unset: send only what the caller bound or passed. A field left
+        # unset must reach the server as absent, not as the model's tool-wide
+        # default, because the server fills an absent field from the REGION's
+        # default: crash_year is 2023 for boston, miami, orlando and tampa (Florida
+        # has no 2022 at all), and outcome is any-injury for tokyo. Sending the
+        # generated default instead returned N=0 and a rate of 0.000 for Florida.
         # mode="json" coerces enums to strings; warnings=False silences the
         # str-vs-Enum default notice (generated defaults are strings, emitted
         # value is correct).
-        return model.model_dump(mode="json", exclude_none=True, warnings=False)
+        return model.model_dump(mode="json", exclude_none=True, exclude_unset=True,
+                                warnings=False)
 
     def _region(self, region: str | None = None, county: str | None = None) -> str:
         """Per-call region wins, else the bound config's, else the default.
