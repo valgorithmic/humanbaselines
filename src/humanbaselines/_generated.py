@@ -103,6 +103,11 @@ class DriverImpairment(Enum):
     impaired_only = 'impaired_only'
 
 
+class FatalDefinition(Enum):
+    thirty_day_equivalent = 'thirty_day_equivalent'
+    as_recorded = 'as_recorded'
+
+
 class FilterOption(BaseModel):
     id: str = Field(..., title='Id')
     label: str = Field(..., title='Label')
@@ -359,6 +364,7 @@ class GeofenceSelections(BaseModel):
     unresolved_nfs: Tier3Mode = 'marginal'
     in_transport: InTransport = 'in_transport'
     desk_reports: DeskReports = 'exclude'
+    fatal_definition: FatalDefinition = 'thirty_day_equivalent'
     road_type: list[RoadGroup] | RoadGroup = Field(
         ['collector_local', 'arterial', 'other_freeway', 'interstate'],
         title='Road Type',
