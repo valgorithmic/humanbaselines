@@ -16,6 +16,7 @@ import pytest
 import responses
 
 from humanbaselines import (
+    APIError,
     AuthenticationError,
     ComputeResult,
     GeofenceSelections,
@@ -154,6 +155,45 @@ def test_crash_year_and_denominator_vmt_kwargs():
     sent = json.loads(responses.calls[0].request.body)["selections"]
     assert sent["crash_year"] == [2023]
     assert sent["denominator_vmt"] == "calibrated"
+
+
+@responses.activate
+def test_fatal_definition_kwarg_validates_and_serializes():
+    # Tokyo counts deaths within 24 hours. The API scales them to a 30-day
+    # equivalent by default, and "as_recorded" asks for the raw count.
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    client().compute(region="tokyo", outcome="fatal", fatal_definition="as_recorded")
+    import json
+    assert json.loads(responses.calls[0].request.body)["selections"]["fatal_definition"] == "as_recorded"
+    with pytest.raises(Exception):  # pydantic ValidationError, before any request
+        client().compute(region="tokyo", fatal_definition="seven_day")
+    assert len(responses.calls) == 1
+
+
+@responses.activate
+def test_automation_traffic_kwarg_validates_and_serializes():
+    # The ADS-exclusion filter. Only the default is served today: an exclusion
+    # needs matched ADS mileage, and the server refuses it with a 400 until a
+    # region has it. The value itself validates client-side.
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    client().compute(region="sf", automation_traffic="exclude_ads_units")
+    import json
+    assert json.loads(responses.calls[0].request.body)["selections"]["automation_traffic"] == "exclude_ads_units"
+    with pytest.raises(Exception):  # pydantic ValidationError, before any request
+        client().compute(region="sf", automation_traffic="exclude_robotaxis")
+    assert len(responses.calls) == 1
+
+
+@responses.activate
+def test_unavailable_outcome_raises_api_error_with_400():
+    # An outcome the region's source cannot measure (airbag in Denver) is a
+    # valid value, so it passes client-side and the server refuses it with 400.
+    detail = "outcome 'airbag' is unavailable for region 'denver'"
+    responses.post(f"{V1}/compute", json={"detail": detail}, status=400)
+    with pytest.raises(APIError) as ei:
+        client().compute(region="denver", outcome="airbag")
+    assert ei.value.status_code == 400
+    assert detail in str(ei.value)
 
 
 @responses.activate

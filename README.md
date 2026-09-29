@@ -181,6 +181,12 @@ except ServiceUnavailableError:    # 503 - service warming up (auto-retried firs
 All inherit from `HumanBaselinesError`. The base `APIError` carries `.status_code`
 and `.body`.
 
+An outcome a region's source data cannot measure raises `APIError` with status
+400, and the message says why. The airbag outcomes are unavailable in the
+Massachusetts regions, DC, the Iowa counties and Denver. Tokyo serves neither
+the police-reported nor the serious-injury (`ka`) tier. The value is valid everywhere, so this is the
+server's answer rather than a client-side check.
+
 ## Configuration
 
 | arg | default | notes |
