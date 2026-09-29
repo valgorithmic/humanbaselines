@@ -25,6 +25,12 @@ class ApiKeyResponse(BaseModel):
     env_var: str = Field('HUMANBASELINES_API_KEY', title='Env Var')
 
 
+class AutomationTraffic(Enum):
+    include_all = 'include_all'
+    exclude_ads_units = 'exclude_ads_units'
+    exclude_ads_involved_crashes = 'exclude_ads_involved_crashes'
+
+
 class CiMethod(Enum):
     fay_feuer = 'fay_feuer'
     empirical_bayes = 'empirical_bayes'
@@ -364,6 +370,7 @@ class GeofenceSelections(BaseModel):
     unresolved_nfs: Tier3Mode = 'marginal'
     in_transport: InTransport = 'in_transport'
     desk_reports: DeskReports = 'exclude'
+    automation_traffic: AutomationTraffic = 'include_all'
     fatal_definition: FatalDefinition = 'thirty_day_equivalent'
     road_type: list[RoadGroup] | RoadGroup = Field(
         ['collector_local', 'arterial', 'other_freeway', 'interstate'],

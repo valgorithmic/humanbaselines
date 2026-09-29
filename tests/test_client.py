@@ -171,6 +171,20 @@ def test_fatal_definition_kwarg_validates_and_serializes():
 
 
 @responses.activate
+def test_automation_traffic_kwarg_validates_and_serializes():
+    # The ADS-exclusion filter. Only the default is served today: an exclusion
+    # needs matched ADS mileage, and the server refuses it with a 400 until a
+    # region has it. The value itself validates client-side.
+    responses.post(f"{V1}/compute", json=_COMPUTE_BODY, status=200)
+    client().compute(region="sf", automation_traffic="exclude_ads_units")
+    import json
+    assert json.loads(responses.calls[0].request.body)["selections"]["automation_traffic"] == "exclude_ads_units"
+    with pytest.raises(Exception):  # pydantic ValidationError, before any request
+        client().compute(region="sf", automation_traffic="exclude_robotaxis")
+    assert len(responses.calls) == 1
+
+
+@responses.activate
 def test_unavailable_outcome_raises_api_error_with_400():
     # An outcome the region's source cannot measure (airbag in Denver) is a
     # valid value, so it passes client-side and the server refuses it with 400.
